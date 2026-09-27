@@ -101,6 +101,8 @@ export default function GalleryPage() {
             tags: m.events?.type === 'INSTITUTIONAL' ? [{ label: 'Institutional', color: 'bg-indigo-600' }] : [{ label: 'Committee', color: 'bg-emerald-600' }],
             aiTags: m.ai_tags || [],
             perceptionHash: m.perception_hash || null,
+            predictedCategory: m.metadata?.predicted_category || null,
+            categoryConfidence: m.metadata?.category_confidence || null,
             size: sizes[i % 3] // Stagger masonry sizes deterministically
           }
         })
@@ -1026,6 +1028,34 @@ export default function GalleryPage() {
                             {tag}
                           </span>
                         ))}
+                      </div>
+                    </div>
+                  )}
+                  {selectedImage.predictedCategory && (
+                    <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400/80 mb-2 flex items-center gap-1">
+                        <span className="material-symbols-outlined" style={{fontSize: '12px'}}>psychology</span> Bayesian Category Prediction (PGM)
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                          selectedImage.predictedCategory === 'INSTITUTIONAL' 
+                            ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30' 
+                            : 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/30'
+                        }`}>
+                          {selectedImage.predictedCategory}
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] text-slate-400">Confidence</span>
+                            <span className="text-[10px] font-bold text-amber-400">{(selectedImage.categoryConfidence * 100).toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all"
+                              style={{ width: `${selectedImage.categoryConfidence * 100}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

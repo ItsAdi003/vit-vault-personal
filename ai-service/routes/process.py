@@ -24,6 +24,7 @@ from config import supabase, SUPABASE_URL, SUPABASE_SERVICE_KEY
 from services.tagger import generate_tags
 from services.embedder import generate_embedding, generate_text_embedding
 from services.deduplicator import generate_hash, check_duplicate
+from services.classifier import classify_category
 
 process_bp = Blueprint("process", __name__)
 
@@ -93,12 +94,17 @@ def process_media():
             }), 200
         
         # ─── Step 3: Auto-Tagging ───
-        print("[AI] Step 3/4: Running auto-tagging (CLIP)...")
+        print("[AI] Step 3/5: Running auto-tagging (CLIP)...")
         
         tags = generate_tags(image)
         
-        # ─── Step 4: Semantic Embedding ───
-        print("[AI] Step 4/4: Generating semantic embedding (512-dim vector)...")
+        # ─── Step 3b: Naive Bayes Category Classification (PGM) ───
+        print("[AI] Step 4/5: Running Naive Bayes category classifier (PGM)...")
+        
+        classification = classify_category(tags)
+        
+        # ─── Step 5: Semantic Embedding ───
+        print("[AI] Step 5/5: Generating semantic embedding (512-dim vector)...")
         
         embedding = generate_embedding(image)
         
@@ -109,17 +115,22 @@ def process_media():
             "ai_tags": tags,
             "perception_hash": str(phash),
             "status": "APPROVED",
+            "metadata": {
+                "predicted_category": classification["predicted_category"],
+                "category_confidence": classification["confidence"],
+                "category_posteriors": classification["posteriors"]
+            }
         }
         
-        # Only include embedding if pgvector is enabled
-        # (we'll add this later when pgvector extension is installed)
-        # update_data["image_embedding"] = embedding
+        # pgvector is enabled — save embedding for semantic search
+        update_data["image_embedding"] = embedding
         
         supabase.table("media").update(update_data).eq("id", media_id).execute()
         
         print(f"\n[AI] ════════════════════════════════════════")
         print(f"[AI] ✓ Processing complete for {media_id}")
         print(f"[AI]   Tags:  {tags}")
+        print(f"[AI]   Category: {classification['predicted_category']} ({classification['confidence']:.1%})")
         print(f"[AI]   Hash:  {phash}")
         print(f"[AI]   Embed: {len(embedding)}-dim vector generated")
         print(f"[AI] ════════════════════════════════════════\n")
@@ -128,6 +139,7 @@ def process_media():
             "status": "success",
             "media_id": media_id,
             "ai_tags": tags,
+            "classification": classification,
             "perception_hash": phash,
             "embedding_dimensions": len(embedding)
         }), 200
@@ -176,5 +188,5 @@ def health_check():
         "status": "healthy",
         "service": "VIT Media Vault AI Engine",
         "model": "openai/clip-vit-base-patch32",
-        "features": ["auto-tagging", "duplicate-detection", "semantic-search"]
+        "features": ["auto-tagging", "duplicate-detection", "semantic-search", "naive-bayes-classifier"]
     }), 200

@@ -13,3 +13,4 @@ ai-service/.env
 client/node_modules/
 __pycache__/
 *.pyc
+ai-service/*.log
