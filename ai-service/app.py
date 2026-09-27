@@ -27,7 +27,7 @@ def create_app():
     app = Flask(__name__)
     
     # Allow the React frontend (localhost:5173) to call this API
-    CORS(app, origins=["http://localhost:5173", "http://localhost:3000"])
+    CORS(app, origins=[r"http://localhost:\d+", r"http://127\.0\.0\.1:\d+"])
     
     # Register API routes
     app.register_blueprint(process_bp)
@@ -43,7 +43,9 @@ app = create_app()
 # load_model()
 
 if __name__ == "__main__":
-    
+    # Local runs load eagerly so the first upload isn't stuck loading the model mid-request
+    load_model()
+
     print(f"\n{'='*60}")
     print(f"  VIT Media Vault — AI Engine")
     print(f"  Running on http://localhost:{FLASK_PORT}")

@@ -233,6 +233,7 @@ export default function UploadModal({ isOpen, onClose, folderId = null }) {
               window.dispatchEvent(new Event('mediaUploaded'));
             } else if (result.status === 'error' || result.error) {
               console.error(`[AI] Processing failed for ${file.name}`, result);
+              toast.error(`AI tagging failed for "${file.name}": ${result.error || 'unknown error'}`);
             } else {
               console.log(`[AI] Processing complete for ${file.name}:`, result);
               window.dispatchEvent(new Event('mediaUploaded'));
@@ -240,6 +241,7 @@ export default function UploadModal({ isOpen, onClose, folderId = null }) {
           })
           .catch(err => {
             console.warn(`[AI] AI processing skipped or failed for ${file.name}:`, err.message || err);
+            toast.error(`Couldn't reach the AI service for "${file.name}" — is app.py running on port 5000?`);
           })
         }
 
