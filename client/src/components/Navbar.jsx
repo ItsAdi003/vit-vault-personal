@@ -58,6 +58,7 @@ export default function Navbar({ variant = 'landing' }) {
             <Link className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#3b3bed] transition-colors" to="/gallery">Gallery</Link>
             <a className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#3b3bed] transition-colors" href="#events">Events</a>
             <a className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#3b3bed] transition-colors" href="#features">Features</a>
+            <Link className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#3b3bed] transition-colors" to="/lab">AI Lab</Link>
           </nav>
         ) : (
           <nav className="hidden md:flex items-center gap-8">

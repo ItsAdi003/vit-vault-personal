@@ -16,6 +16,9 @@ export const AuthProvider = ({ children }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+    }).catch(() => {
+      // Supabase unreachable (e.g. paused project): render the public pages anyway.
+      setLoading(false)
     })
 
     // Listen for auth changes

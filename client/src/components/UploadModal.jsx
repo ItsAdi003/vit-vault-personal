@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { MESSAGES } from '../lib/utils'
 import toast from 'react-hot-toast'
+import { isAdminEmail } from '../lib/config'
 
 export default function UploadModal({ isOpen, onClose, folderId = null }) {
   const { user } = useAuth()
@@ -65,7 +66,7 @@ export default function UploadModal({ isOpen, onClose, folderId = null }) {
       setEventType(folderData.type)
       
       const isCreator = folderData.created_by === user.id;
-      const isAdmin = user.email === 'raunak.baweja@vit.edu.in';
+      const isAdmin = isAdminEmail(user.email);
       const isCollaborator = folderData.collaborators?.includes(user?.email?.toLowerCase());
 
       if (!isCreator && !isAdmin && !isCollaborator) {
@@ -137,7 +138,7 @@ export default function UploadModal({ isOpen, onClose, folderId = null }) {
           const f = existing[0];
           const isCollaborator = f.collaborators?.includes(user?.email?.toLowerCase());
           const isDirectUpload = uploadType === 'DIRECT';
-          if (!isDirectUpload && f.created_by !== user.id && user.email !== 'raunak.baweja@vit.edu.in' && !isCollaborator) {
+          if (!isDirectUpload && f.created_by !== user.id && !isAdminEmail(user.email) && !isCollaborator) {
             throw new Error(MESSAGES.ERRORS.FOLDER_EXISTS_OTHER_USER)
           }
           eventId = existing[0].id
@@ -175,7 +176,7 @@ export default function UploadModal({ isOpen, onClose, folderId = null }) {
         
         if (doubleCheck) {
           const isCollaborator = doubleCheck.collaborators?.includes(user?.email?.toLowerCase());
-          if (doubleCheck.created_by !== user.id && user.email !== 'raunak.baweja@vit.edu.in' && !isCollaborator) {
+          if (doubleCheck.created_by !== user.id && !isAdminEmail(user.email) && !isCollaborator) {
             throw new Error(MESSAGES.ERRORS.NO_PERMISSION_FOLDER)
           }
         }

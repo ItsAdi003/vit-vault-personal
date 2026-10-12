@@ -8,6 +8,9 @@ import CollaborateModal from '../components/CollaborateModal'
 import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
 import toast from 'react-hot-toast'
+import { isAdminEmail } from '../lib/config'
+
+const AI_URL = import.meta.env.VITE_AI_SERVICE_URL || 'http://localhost:5000'
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -42,6 +45,41 @@ export default function GalleryPage() {
   const [editNameValue, setEditNameValue] = useState('')
   const [isEditingDesc, setIsEditingDesc] = useState(false)
   const [editDescValue, setEditDescValue] = useState('')
+  // AI semantic search: CLIP text embedding vs stored image embeddings, fused with BM25 on tags/captions.
+  // aiResults === null means "not available" and the plain keyword filter is used instead.
+  const [aiSearch, setAiSearch] = useState(true)
+  const [aiResults, setAiResults] = useState(null)
+  const [aiSearching, setAiSearching] = useState(false)
+
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q || !aiSearch) {
+      setAiResults(null)
+      return
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      setAiSearching(true)
+      try {
+        const res = await fetch(`${AI_URL}/api/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q }),
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        setAiResults(Array.isArray(data.results) ? data.results : null)
+      } catch (err) {
+        if (err.name !== 'AbortError') setAiResults(null)
+      } finally {
+        setAiSearching(false)
+      }
+    }, 400)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [searchQuery, aiSearch])
 
   const handleLogout = async () => {
     await signOut()
@@ -192,8 +230,13 @@ export default function GalleryPage() {
     }
   }, [selectedEventId])
 
+  const aiRank = searchQuery.trim() && aiResults
+    ? new Map(aiResults.map((r, i) => [r.id, i]))
+    : null
+
   const filteredItems = items.filter(item => {
     if (activeCategory !== 'ALL' && item.type !== activeCategory) return false;
+    if (aiRank) return aiRank.has(item.id);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matchTitle = item.title?.toLowerCase().includes(q) || item.custom_name?.toLowerCase().includes(q) || item.eventTitle?.toLowerCase().includes(q);
@@ -204,6 +247,7 @@ export default function GalleryPage() {
     }
     return true;
   })
+  if (aiRank) filteredItems.sort((a, b) => aiRank.get(a.id) - aiRank.get(b.id))
 
   const filteredFolders = folders.filter(f => {
     if (activeCategory !== 'ALL' && f.type !== activeCategory) return false;
@@ -522,7 +566,7 @@ export default function GalleryPage() {
               <span className="material-symbols-outlined absolute left-3 text-slate-400">search</span>
               <input
                 className="w-full bg-[#3b3bed]/10 border-none rounded-xl pl-11 pr-4 py-2 text-sm focus:ring-2 focus:ring-[#3b3bed]/50 transition-all text-white placeholder:text-slate-500 outline-none"
-                placeholder="Search tags, images, or folders..."
+                placeholder={aiSearch ? "Describe what you're looking for..." : "Search tags, images, or folders..."}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
@@ -535,11 +579,32 @@ export default function GalleryPage() {
                   }
                 }}
               />
+              <button
+                type="button"
+                onClick={() => setAiSearch(v => !v)}
+                title={aiSearch
+                  ? 'AI semantic search is ON (CLIP embeddings + BM25). Click for plain keyword search.'
+                  : 'Keyword search. Click to turn AI semantic search on.'}
+                className={`absolute right-2 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold tracking-wide transition-colors ${aiSearch ? 'bg-[#3b3bed] text-white' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+              >
+                <span className={`material-symbols-outlined text-sm ${aiSearching ? 'animate-spin' : ''}`}>
+                  {aiSearching ? 'progress_activity' : 'auto_awesome'}
+                </span>
+                {aiSearch ? (aiRank ? 'AI' : 'AI ready') : 'KEYWORD'}
+              </button>
             </label>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <Link
+            to="/lab"
+            className="flex items-center gap-2 p-2 px-3 rounded-xl hover:bg-[#3b3bed]/10 text-slate-400 hover:text-white transition-colors"
+            title="See every model in this project running live"
+          >
+            <span className="material-symbols-outlined text-sm">science</span>
+            <span className="text-sm font-bold hidden sm:inline">AI Lab</span>
+          </Link>
+          <button
             onClick={handleLogout}
             className="flex items-center gap-2 p-2 px-3 rounded-xl hover:bg-red-500/10 hover:text-red-500 text-slate-400 transition-colors mr-2"
           >
@@ -644,7 +709,7 @@ export default function GalleryPage() {
                     if (!folder) return null;
                     
                     const isCreator = folder.created_by === user?.id;
-                    const isAdmin = user?.email === 'raunak.baweja@vit.edu.in';
+                    const isAdmin = isAdminEmail(user?.email);
                     const isCollaborator = folder.collaborators?.includes(user?.email);
                     
                     if (!isCreator && !isAdmin && !isCollaborator) return null;
@@ -744,7 +809,7 @@ export default function GalleryPage() {
                   { (() => {
                     const folder = selectedEventId ? folders.find(f => f.id === selectedEventId) : null;
                     const isCreator = folder?.created_by === user?.id;
-                    const isAdmin = user?.email === 'raunak.baweja@vit.edu.in';
+                    const isAdmin = isAdminEmail(user?.email);
                     const isCollaborator = folder?.collaborators?.includes(user?.email?.toLowerCase());
                     return (isCreator || isAdmin || isCollaborator || !selectedEventId);
                   })() && (
@@ -940,7 +1005,7 @@ export default function GalleryPage() {
       {/* FAB */}
       {(!selectedEventId || (() => {
         const folder = folders.find(f => f.id === selectedEventId);
-        return folder?.created_by === user?.id || folder?.collaborators?.includes(user?.email) || user?.email === 'raunak.baweja@vit.edu.in';
+        return folder?.created_by === user?.id || folder?.collaborators?.includes(user?.email) || isAdminEmail(user?.email);
       })()) && (
         <motion.button
           whileHover={{ scale: 1.1 }}
@@ -1086,7 +1151,7 @@ export default function GalleryPage() {
                       <>
                         <h2 className="text-2xl font-bold text-white leading-tight mt-1">{selectedImage.custom_name || selectedImage.eventTitle}</h2>
                         { (selectedImage.uploader_id === user?.id || 
-                           user?.email === 'raunak.baweja@vit.edu.in' || 
+                           isAdminEmail(user?.email) || 
                            (folders.find(f => f.id === selectedImage.event_id)?.created_by === user?.id) || 
                            (folders.find(f => f.id === selectedImage.event_id)?.collaborators?.includes(user?.email?.toLowerCase()))) && (
                           <button 
@@ -1129,7 +1194,7 @@ export default function GalleryPage() {
                           {selectedImage.description || <span className="italic opacity-50">No description provided.</span>}
                         </p>
                         { (selectedImage.uploader_id === user?.id || 
-                           user?.email === 'raunak.baweja@vit.edu.in' || 
+                           isAdminEmail(user?.email) || 
                            (folders.find(f => f.id === selectedImage.event_id)?.created_by === user?.id) || 
                            (folders.find(f => f.id === selectedImage.event_id)?.collaborators?.includes(user?.email?.toLowerCase()))) && (
                           <button 
@@ -1171,7 +1236,7 @@ export default function GalleryPage() {
 
                 {/* Actions Button Group (Only visible if uploader, creator, or admin) */}
                 <div className="mt-auto pt-6 relative space-y-3">
-                  { (selectedImage.event_id && (folders.find(f => f.id === selectedImage.event_id)?.created_by === user?.id || user?.email === 'raunak.baweja@vit.edu.in')) && (
+                  { (selectedImage.event_id && (folders.find(f => f.id === selectedImage.event_id)?.created_by === user?.id || isAdminEmail(user?.email))) && (
                     <button 
                       onClick={executeSetThumbnail}
                       disabled={isUpdatingThumbnail}
@@ -1181,7 +1246,7 @@ export default function GalleryPage() {
                       {isUpdatingThumbnail ? 'Updating...' : 'Set as Folder Thumbnail'}
                     </button>
                   )}
-                  { (user?.id === selectedImage.uploader_id || user?.email === 'raunak.baweja@vit.edu.in') && (
+                  { (user?.id === selectedImage.uploader_id || isAdminEmail(user?.email)) && (
                     <button 
                       onClick={() => setShowDeleteConfirm(true)}
                       disabled={isDeleting}

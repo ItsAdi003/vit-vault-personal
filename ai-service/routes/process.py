@@ -25,6 +25,7 @@ from services.tagger import generate_tags
 from services.embedder import generate_embedding, generate_text_embedding
 from services.deduplicator import generate_hash, check_duplicate
 from services.classifier import classify_category
+from services.search import rank_media
 
 process_bp = Blueprint("process", __name__)
 
@@ -167,13 +168,23 @@ def semantic_search():
         # Convert the text query to a vector
         text_embedding = generate_text_embedding(query)
         
-        # For now, we return the embedding so the frontend can do client-side comparison
-        # Later, when pgvector is enabled, we'll do server-side cosine similarity
+        # Rank the gallery server-side: dense CLIP similarity fused with BM25 over tags/captions.
+        # `results` is null (with `results_error`) if the database is unreachable, so the
+        # frontend can fall back to plain keyword filtering.
+        results, results_error = None, None
+        try:
+            results = rank_media(query, text_embedding)
+        except Exception as e:
+            results_error = str(e)
+
         return jsonify({
             "status": "success",
             "query": query,
             "embedding": text_embedding,
-            "dimensions": len(text_embedding)
+            "dimensions": len(text_embedding),
+            "mode": "hybrid",
+            "results": results,
+            "results_error": results_error
         }), 200
         
     except Exception as e:

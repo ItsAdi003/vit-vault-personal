@@ -168,11 +168,24 @@ def classify_category(tags: list[str]) -> dict:
     reasoning_parts.append(f"Posterior P(COMMITTEE|tags) = {posteriors['COMMITTEE']}")
     reasoning_parts.append(f"MAP Estimate: {predicted} (confidence: {confidence:.1%})")
     
+    # Weight of evidence per tag: log P(tag|COMMITTEE) - log P(tag|INSTITUTIONAL).
+    # Positive values push the posterior towards COMMITTEE, negative towards INSTITUTIONAL.
+    evidence = [
+        {
+            "tag": inst["tag"],
+            "p_institutional": inst["P(tag|INSTITUTIONAL)"],
+            "p_committee": comm["P(tag|COMMITTEE)"],
+            "llr": round(comm["log_contribution"] - inst["log_contribution"], 4),
+        }
+        for inst, comm in zip(tag_contributions["INSTITUTIONAL"], tag_contributions["COMMITTEE"])
+    ]
+
     result = {
         "predicted_category": predicted,
         "confidence": confidence,
         "posteriors": posteriors,
-        "reasoning": " | ".join(reasoning_parts)
+        "reasoning": " | ".join(reasoning_parts),
+        "evidence": evidence,
     }
     
     print(f"[PGM] ══════════════════════════════════════════")

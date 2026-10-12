@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import GalleryPage from './pages/GalleryPage'
 import EventDetailPage from './pages/EventDetailPage'
+import LabPage from './pages/LabPage'
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }) => {
@@ -44,7 +45,9 @@ function App() {
         <AnimatePresence mode="wait">
           <Routes>
             <Route path="/" element={<LandingPage />} />
-            
+
+            <Route path="/lab" element={<LabPage />} />
+
             <Route path="/login" element={
               <PublicRoute>
                 <LoginPage />

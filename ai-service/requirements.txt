@@ -10,3 +10,6 @@ supabase==2.13.0
 python-dotenv==1.0.1
 gunicorn==21.2.0
 requests
+numpy>=1.26
+scipy>=1.11
+scikit-learn>=1.4

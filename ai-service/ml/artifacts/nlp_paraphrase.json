@@ -1,0 +1,50 @@
+{
+  "title": "Paraphrase retrieval on campus-event phrases: sparse vs dense",
+  "description": "48 phrases (12 intents x 4 paraphrases) retrieve each other. Sparse methods can only match shared words; dense methods compare meaning in embedding space.",
+  "meta": {
+    "phrases": 48,
+    "intents": 12,
+    "relevant per query": 3,
+    "paraphrase pairs with no shared word": "83.3%"
+  },
+  "table": {
+    "columns": [
+      "method",
+      "MAP",
+      "MRR",
+      "P@3",
+      "nDCG@3"
+    ],
+    "rows": [
+      [
+        "TF-IDF (sparse)",
+        0.23016604431334217,
+        0.3923025157986492,
+        0.18055555555555555,
+        0.19471653396070376
+      ],
+      [
+        "BM25 (sparse)",
+        0.23363826653556438,
+        0.40271918246531585,
+        0.18055555555555555,
+        0.19832480094105567
+      ],
+      [
+        "CLIP text tower (dense)",
+        0.6863532423634675,
+        0.8715277777777777,
+        0.6388888888888888,
+        0.6728350398117889
+      ],
+      [
+        "Hybrid RRF (BM25 + CLIP)",
+        0.5267672893217933,
+        0.6370287698412699,
+        0.4375,
+        0.4387800530823851
+      ]
+    ]
+  },
+  "notes": "Dense CLIP beats both sparse rankers by a wide margin because most paraphrase pairs share no word. Equal-weight RRF is worse than dense alone here: when one ranker is mostly uninformative it dilutes the good one, so fusion should be weighted or gated. Fusion is expected to pay off when queries do reuse document vocabulary (exact tag names). CLIP's text tower is trained to align text with images, not as a general sentence encoder; a dedicated model such as MiniLM may do better on pure text-text similarity (run with --minilm to measure it)."
+}

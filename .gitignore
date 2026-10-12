@@ -5,7 +5,10 @@
 !/client/
 !/ai-service/
 !/.github/
+!/supabase/
+!/docs/
 !/.gitignore
+!/README.md
 
 # Ignore dependencies & env
 ai-service/venv/
@@ -14,3 +17,4 @@ client/node_modules/
 __pycache__/
 *.pyc
 ai-service/*.log
+ai-service/data/

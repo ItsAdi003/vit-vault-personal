@@ -20,6 +20,7 @@ from flask_cors import CORS
 from config import FLASK_PORT
 from models.clip_model import load_model
 from routes.process import process_bp
+from routes.lab import lab_bp
 
 
 def create_app():
@@ -31,7 +32,9 @@ def create_app():
     
     # Register API routes
     app.register_blueprint(process_bp)
-    
+    app.register_blueprint(lab_bp)
+    app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
+
     return app
 
 
